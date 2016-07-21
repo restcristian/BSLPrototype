@@ -69,6 +69,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
     private Bitmap inputImage; // make bitmap from image resource
     private Bitmap inputImage2;
+    MatOfPoint cvxhullcontour;
     //private FeatureDetector detector = FeatureDetector.create(FeatureDetector.SIFT);
     private FeatureDetector detector = FeatureDetector.create(FeatureDetector.SIFT);
    // private static long MIN_HESSIAN = 400;
@@ -90,6 +91,51 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             }
         }
     };
+
+
+    public Mat ConvertedMat(Bitmap bmp, MatOfPoint convexHullContour)
+    {
+        Mat src2 = new Mat();
+        //Converting the Bitmaps to Mat objects
+        //Utils.bitmapToMat(inputImage, src);
+        Utils.bitmapToMat(bmp, src2);
+        Imgproc.cvtColor(src2, src2, Imgproc.COLOR_RGBA2BGR);
+
+        List<MatOfPoint> contours2 = new ArrayList<>();
+
+        Mat hier2 = new Mat();
+
+        Mat threshold2_out;
+
+        threshold2_out = findColor(src2,15);
+
+        Imgproc.findContours(threshold2_out, contours2, hier2, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+
+        int LargestContour2 = findBiggestContour(contours2);
+
+
+        MatOfInt hull2 = new MatOfInt();
+
+        Mat output2 = new Mat(src2.size(), CvType.CV_8UC3);
+
+        List<MatOfPoint> convexHullContour2 = new ArrayList<>();
+
+        List<MatOfInt> hulls2 = new ArrayList<>();
+
+        if(LargestContour2!= -1)
+        {
+            /*************Convex Hull 2***********/
+            Imgproc.convexHull(contours2.get(LargestContour2), hull2, false);
+            MatOfPoint hullContour2 = hull2Points(hull2, contours2.get(LargestContour2));
+            convexHullContour2.add(hullContour2);
+            Imgproc.drawContours(src2, convexHullContour2, 0, new Scalar(0, 0, 255), 3);
+            Imgproc.drawContours(src2, contours2, LargestContour2, new Scalar(255), -1);
+
+            convexHullContour = hullContour2;
+        }
+
+        return src2;
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -112,6 +158,11 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
        // imageView = (ImageView) this.findViewById(R.id.imageView);
         imageView2 = (ImageView) this.findViewById(R.id.imageView2);
         //txtMatching = (TextView) this.findViewById(R.id.TextViewMatching);
+
+        cvxhullcontour = new MatOfPoint();
+        Mat src = ConvertedMat(inputImage2,cvxhullcontour);
+        Utils.matToBitmap(src, inputImage2);
+        imageView2.setImageBitmap(inputImage2);
 
 
         //sift();
@@ -143,9 +194,9 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         //Core.inRange(imageHSV, new Scalar(0, minS, minV, 0), new Scalar(rng, maxS, maxV, 0), imgThreshold0);
 
         Core.inRange(imageHSV, new Scalar(0, 190, 30), new Scalar(10,255,255), imgThreshold0);
-        Core.inRange(imageHSV, new Scalar(170, 190, 30), new Scalar(180,255,255), imgThreshold1);
+        Core.inRange(imageHSV, new Scalar(170, 190, 30), new Scalar(180, 255, 255), imgThreshold1);
 
-        Core.bitwise_or(imgThreshold0, imgThreshold1,imgThreshold);
+        Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
 
         //Core.inRange(imageHSV, new Scalar(170,70,50), new Scalar(180, 255, 255), imgThreshold1);
 
@@ -184,160 +235,14 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
           try {
 
               Mat src = inputFrame.rgba();
-              Mat src2 = new Mat();
-              //Converting the Bitmaps to Mat objects
-              //Utils.bitmapToMat(inputImage, src);
-              Utils.bitmapToMat((inputImage2.copy(Bitmap.Config.ARGB_8888, false)), src2);
+              Bitmap bmp = Bitmap.createBitmap(src.cols(), src.rows(),Bitmap.Config.ARGB_8888);
+              Utils.matToBitmap(src,bmp);
+              MatOfPoint cvxpoint = new MatOfPoint();
+              src = ConvertedMat(bmp,cvxpoint);
 
-              Mat gray = new Mat();
-              //Mat gray2 = new Mat();
+              //double x = Imgproc.matchShapes(cvxpoint, cvxhullcontour,Imgproc.CV_CONTOURS_MATCH_I1,0.0);
+             // Imgproc.putText(src,Double.toString(x),new Point(src.rows()/2, src.cols()/2),Core.FONT_ITALIC,1.0, new Scalar(0,255,0));
 
-              int max_tresh = 255;
-              int thresh = 127;
-              //Converting the Mat Objects to gray scale
-
-              Mat hsv = new Mat(src.size(), CvType.CV_8UC3);
-
-
-              //Imgproc.blur(src, src, src.size());
-              Imgproc.cvtColor(src, src, Imgproc.COLOR_RGBA2BGR);
-              Imgproc.cvtColor(src2,src2, Imgproc.COLOR_RGBA2BGR);
-
-              //Imgproc.cvtColor(src, hsv, Imgproc.COLOR_BGR2HSV_FULL);
-              //Imgproc.cvtColor(src, hsv, Imgproc.COLOR_BGR2YCrCb);
-              //Imgproc.cvtColor(src2, gray2, Imgproc.COLOR_RGBA2GRAY);
-
-              //Blurring Images
-              //Imgproc.blur(src, src, src.size());
-              //Imgproc.blur(src2,src2,src.size());
-
-
-              //Imgproc.blur(gray,hsv, new Size(3,3));
-              //Imgproc.blur(gray2, gray2, new Size(3, 3));
-
-
-              List<MatOfPoint> contours = new ArrayList<>();
-              List<MatOfPoint> contours2 = new ArrayList<>();
-
-              Mat hier = new Mat();
-              Mat hier2 = new Mat();
-
-              Mat threshold1_out;
-              Mat threshold2_out;
-
-              threshold1_out = findColor(src,15);
-              threshold2_out = findColor(src2,15);
-
-              //Core.inRange(hsv,new Scalar(0,58,88),new Scalar(23,173,229),threshold1_out);
-
-              //**********************************ycbk************************************************//*
-              //Core.inRange(hsv, new Scalar(0, 133, 77), new Scalar(255, 173, 127), threshold1_out);
-
-              //**************************************************************************************//*
-              //********************Probando con Rojo********************************************//*
-              //Core.inRange(hsv, new Scalar(0, 53, 185,0), new Scalar(15, 255, 255,0), threshold1_out);
-              //*********************************************************************************//*
-              //Core.inRange(gray2, new Scalar(0, 10, 60), new Scalar(20, 150, 255), threshold2_out);
-              //Obtaining thresholds
-              //Imgproc.threshold(threshold1_out, threshold1_out, thresh, max_tresh, Imgproc.THRESH_BINARY);
-
-              //Imgproc.threshold(gray2, threshold2_out, thresh, max_tresh, Imgproc.THRESH_BINARY);
-
-
-              Imgproc.findContours(threshold1_out, contours, hier, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-              Imgproc.findContours(threshold2_out, contours2, hier2, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-
-              MatOfInt hull = new MatOfInt();
-              MatOfInt hull2 = new MatOfInt();
-
-              Mat output1 = new Mat(src.size(), CvType.CV_8UC3);
-              Mat output2 = new Mat(src.size(), CvType.CV_8UC3);
-
-              List<MatOfPoint> convexHullContour = new ArrayList<>();
-              List<MatOfPoint> convexHullContour2 = new ArrayList<>();
-
-              List<MatOfInt> hulls = new ArrayList<>();
-              List<MatOfInt> hulls2 = new ArrayList<>();
-
-
-            /*
-            for(int contourIdx = 0; contourIdx < contours.size(); contourIdx++)
-            {
-                Imgproc.drawContours(output1, contours, contourIdx, new Scalar(0, 0, 255), 3);
-                Imgproc.convexHull(contours.get(contourIdx), hull,false);
-                MatOfPoint hullContour = hull2Points(hull, contours.get(contourIdx));
-                convexHullContour.add(hullContour);
-                hulls.add(hull);
-                //org.opencv.core.Rect box = Imgproc.boundingRect(hullContour);
-
-            }
-            */
-
-              int LargestContour1 = findBiggestContour(contours);
-              int LargestContour2 = findBiggestContour(contours2);
-
-              if(LargestContour1!= -1 && LargestContour2 != -1)
-              {
-
-                  /*
-                  for(int contourIdx = 0; contourIdx < contours.size(); contourIdx++)
-                  {
-                      Imgproc.drawContours(output1, contours, contourIdx, new Scalar(255, 0, 0), -1);
-                      //org.opencv.core.Rect box = Imgproc.boundingRect(hullContour);
-
-                  }
-                    */
-                  /*************************************************/
-                  Imgproc.convexHull(contours.get(LargestContour1), hull, false);
-                  MatOfPoint hullContour = hull2Points(hull, contours.get(LargestContour1));
-                  convexHullContour.add(hullContour);
-                  Imgproc.drawContours(src, convexHullContour, 0, new Scalar(0, 0, 255), 3);
-                  Imgproc.drawContours(src, contours, LargestContour1, new Scalar(255), -1);
-                  /*************Convex Hull 2***********/
-                  Imgproc.convexHull(contours2.get(LargestContour2), hull2, false);
-                  MatOfPoint hullContour2 = hull2Points(hull, contours2.get(LargestContour2));
-                  convexHullContour2.add(hullContour2);
-                  Imgproc.drawContours(output2, convexHullContour2, 0, new Scalar(0, 0, 255), 3);
-                  Imgproc.drawContours(output2, contours2, LargestContour2, new Scalar(255), -1);
-
-
-                  double x = Imgproc.matchShapes(hullContour,hullContour2,Imgproc.CV_CONTOURS_MATCH_I2,0.0);
-                  Imgproc.putText(src,Double.toString(x),new Point(src.rows()/2,src.cols()/2),Core.FONT_ITALIC,1.0, new Scalar(0,255,0));
-
-                 /* Utils.matToBitmap(output2,inputImage2);
-                  imageView2.setImageBitmap(inputImage2);
-                 */
-              }
-
-
-
-            /*
-            for(int contourIdx = 0; contourIdx < contours.size(); contourIdx++)
-            {
-                Imgproc.drawContours(output1, convexHullContour, contourIdx, new Scalar(255, 0, 0), 3);
-                //MatOfPoint defectContour = defect2Points(defect,contours.get(contourIdx));
-               // defectsContours.add(defectContour);
-            }*/
-
-             // List<MatOfPoint> convexHullContour2 = new ArrayList<>();
-              //List<MatOfInt> hulls2 = new ArrayList<>();
-
-
-              // Imgproc.drawContours(output2,contours2,findBiggestContour(contours2), new Scalar(255),-1);
-
-
-            /*
-            Utils.matToBitmap(output1, inputImage);
-            Utils.matToBitmap(output2, inputImage2);
-
-            imageView.setImageBitmap(inputImage);
-            imageView2.setImageBitmap(inputImage2);
-    */
-
-
-              // Mat mRgbaT = output1.t();
-              //Core.flip(output1.t().t(), mRgbaT,1);
-              //Imgproc.resize(mRgbaT, mRgbaT, output1.size());
               return src;
           }catch(Exception e)
           {
@@ -471,9 +376,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
        return point;
    }
 
-    public void tryout() {
 
-    }
 
 
 }
