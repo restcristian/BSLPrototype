@@ -93,8 +93,8 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //inputImage = BitmapFactory.decodeResource(getResources(), R.drawable.red2);
-        //inputImage2 = BitmapFactory.decodeResource(getResources(),R.drawable.hand1);
+        //inputImage = BitmapFactory.decodeResource(getResources(), R.drawable.1);
+        inputImage2 = BitmapFactory.decodeResource(getResources(),R.drawable.count5);
 
         setContentView(R.layout.activity_main);
         if(!OpenCVLoader.initDebug())
@@ -110,7 +110,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
        // imageView = (ImageView) this.findViewById(R.id.imageView);
-        //imageView2 = (ImageView) this.findViewById(R.id.imageView2);
+        imageView2 = (ImageView) this.findViewById(R.id.imageView2);
         //txtMatching = (TextView) this.findViewById(R.id.TextViewMatching);
 
 
@@ -184,10 +184,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
           try {
 
               Mat src = inputFrame.rgba();
-              //Mat src2 = new Mat();
+              Mat src2 = new Mat();
               //Converting the Bitmaps to Mat objects
               //Utils.bitmapToMat(inputImage, src);
-              //Utils.bitmapToMat((inputImage2.copy(Bitmap.Config.ARGB_8888, false)), src2);
+              Utils.bitmapToMat((inputImage2.copy(Bitmap.Config.ARGB_8888, false)), src2);
 
               Mat gray = new Mat();
               //Mat gray2 = new Mat();
@@ -198,8 +198,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
               Mat hsv = new Mat(src.size(), CvType.CV_8UC3);
 
+
               //Imgproc.blur(src, src, src.size());
               Imgproc.cvtColor(src, src, Imgproc.COLOR_RGBA2BGR);
+              Imgproc.cvtColor(src2,src2, Imgproc.COLOR_RGBA2BGR);
 
               //Imgproc.cvtColor(src, hsv, Imgproc.COLOR_BGR2HSV_FULL);
               //Imgproc.cvtColor(src, hsv, Imgproc.COLOR_BGR2YCrCb);
@@ -221,9 +223,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
               Mat hier2 = new Mat();
 
               Mat threshold1_out;
-              Mat threshold2_out = new Mat();
+              Mat threshold2_out;
 
               threshold1_out = findColor(src,15);
+              threshold2_out = findColor(src2,15);
 
               //Core.inRange(hsv,new Scalar(0,58,88),new Scalar(23,173,229),threshold1_out);
 
@@ -242,15 +245,19 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
 
               Imgproc.findContours(threshold1_out, contours, hier, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
-              // Imgproc.findContours(threshold2_out, contours2, hier2, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE, new Point(0, 0));
+              Imgproc.findContours(threshold2_out, contours2, hier2, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
 
               MatOfInt hull = new MatOfInt();
+              MatOfInt hull2 = new MatOfInt();
 
               Mat output1 = new Mat(src.size(), CvType.CV_8UC3);
-              //Mat output2 = new Mat(threshold2_out.size(), CvType.CV_8UC3);
+              Mat output2 = new Mat(src.size(), CvType.CV_8UC3);
 
               List<MatOfPoint> convexHullContour = new ArrayList<>();
+              List<MatOfPoint> convexHullContour2 = new ArrayList<>();
+
               List<MatOfInt> hulls = new ArrayList<>();
+              List<MatOfInt> hulls2 = new ArrayList<>();
 
 
             /*
@@ -267,9 +274,9 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             */
 
               int LargestContour1 = findBiggestContour(contours);
+              int LargestContour2 = findBiggestContour(contours2);
 
-
-              if(LargestContour1!= -1)
+              if(LargestContour1!= -1 && LargestContour2 != -1)
               {
 
                   /*
@@ -280,13 +287,26 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
                   }
                     */
-
+                  /*************************************************/
                   Imgproc.convexHull(contours.get(LargestContour1), hull, false);
                   MatOfPoint hullContour = hull2Points(hull, contours.get(LargestContour1));
                   convexHullContour.add(hullContour);
-                  Imgproc.drawContours(output1, convexHullContour, 0, new Scalar(0, 0, 255), 3);
-                  Imgproc.drawContours(output1, contours, LargestContour1, new Scalar(255), -1);
+                  Imgproc.drawContours(src, convexHullContour, 0, new Scalar(0, 0, 255), 3);
+                  Imgproc.drawContours(src, contours, LargestContour1, new Scalar(255), -1);
+                  /*************Convex Hull 2***********/
+                  Imgproc.convexHull(contours2.get(LargestContour2), hull2, false);
+                  MatOfPoint hullContour2 = hull2Points(hull, contours2.get(LargestContour2));
+                  convexHullContour2.add(hullContour2);
+                  Imgproc.drawContours(output2, convexHullContour2, 0, new Scalar(0, 0, 255), 3);
+                  Imgproc.drawContours(output2, contours2, LargestContour2, new Scalar(255), -1);
 
+
+                  double x = Imgproc.matchShapes(hullContour,hullContour2,Imgproc.CV_CONTOURS_MATCH_I2,0.0);
+                  Imgproc.putText(src,Double.toString(x),new Point(src.rows()/2,src.cols()/2),Core.FONT_ITALIC,1.0, new Scalar(0,255,0));
+
+                 /* Utils.matToBitmap(output2,inputImage2);
+                  imageView2.setImageBitmap(inputImage2);
+                 */
               }
 
 
@@ -318,7 +338,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
               // Mat mRgbaT = output1.t();
               //Core.flip(output1.t().t(), mRgbaT,1);
               //Imgproc.resize(mRgbaT, mRgbaT, output1.size());
-              return output1;
+              return src;
           }catch(Exception e)
           {
               Log.e("La Exception on tobul:",e.toString());
