@@ -17,6 +17,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -52,6 +53,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 
@@ -69,7 +71,8 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
     private Bitmap inputImage; // make bitmap from image resource
     private Bitmap inputImage2;
-    MatOfPoint cvxhullcontour;
+    private Mat cvxhullcontour;
+    private Mat Contour1;
     //private FeatureDetector detector = FeatureDetector.create(FeatureDetector.SIFT);
     private FeatureDetector detector = FeatureDetector.create(FeatureDetector.SIFT);
    // private static long MIN_HESSIAN = 400;
@@ -93,8 +96,11 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     };
 
 
-    public Mat ConvertedMat(Bitmap bmp, MatOfPoint convexHullContour)
+    public List<Mat> ConvertedMat(Bitmap bmp)
     {
+
+        List<Mat> list = new ArrayList<>();
+
         Mat src2 = new Mat();
         //Converting the Bitmaps to Mat objects
         //Utils.bitmapToMat(inputImage, src);
@@ -116,7 +122,9 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         MatOfInt hull2 = new MatOfInt();
 
-        Mat output2 = new Mat(src2.size(), CvType.CV_8UC3);
+        //Mat output2 = new Mat(src2.size(), CvType.CV_8UC3);
+
+        Mat tempoutput = new Mat(src2.size(), CvType.CV_32F);
 
         List<MatOfPoint> convexHullContour2 = new ArrayList<>();
 
@@ -131,10 +139,18 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             Imgproc.drawContours(src2, convexHullContour2, 0, new Scalar(0, 0, 255), 3);
             Imgproc.drawContours(src2, contours2, LargestContour2, new Scalar(255), -1);
 
-            convexHullContour = hullContour2;
+            /*
+            Imgproc.drawContours(tempoutput,convexHullContour2,0, new Scalar(255,0,0),-1);
+            Imgproc.drawContours(tempoutput, contours2, LargestContour2, new Scalar(255, 0, 0), -1);
+
+             */
+            list.add(src2);
+            //list.add(tempoutput);
+            list.add(hullContour2);
+
         }
 
-        return src2;
+        return list;
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -160,8 +176,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         //txtMatching = (TextView) this.findViewById(R.id.TextViewMatching);
 
         cvxhullcontour = new MatOfPoint();
-        Mat src = ConvertedMat(inputImage2,cvxhullcontour);
-        Utils.matToBitmap(src, inputImage2);
+        List<Mat> src = ConvertedMat(inputImage2);
+        cvxhullcontour = src.get(1);
+        Contour1 = src.get(0);
+        Utils.matToBitmap(Contour1, inputImage2);
         imageView2.setImageBitmap(inputImage2);
 
 
@@ -235,15 +253,29 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
           try {
 
               Mat src = inputFrame.rgba();
+              List<Mat> templist = new ArrayList<>();
+
               Bitmap bmp = Bitmap.createBitmap(src.cols(), src.rows(),Bitmap.Config.ARGB_8888);
-              Utils.matToBitmap(src,bmp);
+              Utils.matToBitmap(src, bmp);
               MatOfPoint cvxpoint = new MatOfPoint();
-              src = ConvertedMat(bmp,cvxpoint);
+              templist = ConvertedMat(bmp);
 
-              //double x = Imgproc.matchShapes(cvxpoint, cvxhullcontour,Imgproc.CV_CONTOURS_MATCH_I1,0.0);
-             // Imgproc.putText(src,Double.toString(x),new Point(src.rows()/2, src.cols()/2),Core.FONT_ITALIC,1.0, new Scalar(0,255,0));
 
-              return src;
+              double x = Imgproc.matchShapes(templist.get(1), cvxhullcontour,Imgproc.CV_CONTOURS_MATCH_I1,0.0);
+              double m = 0.02;
+              double y = Double.compare(x,m);
+              Scalar diff_color = (x <= m)? new Scalar(0,255,0):new Scalar(255,0,0);
+              if(y <= 0)
+              {
+                  runOnUiThread(new Runnable() {
+                      public void run() {
+                          Toast.makeText(getApplicationContext(), "MATCH!!", Toast.LENGTH_SHORT).show();
+                      }
+                  });
+              }
+              Imgproc.putText(templist.get(0),Double.toString(x),new Point(src.rows()/2, src.cols()/2),Core.FONT_ITALIC,1.0, diff_color);
+
+              return templist.get(0);
           }catch(Exception e)
           {
               Log.e("La Exception on tobul:",e.toString());
