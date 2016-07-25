@@ -96,7 +96,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     };
 
 
-    public List<Mat> ConvertedMat(Bitmap bmp)
+    public List<Mat> ConvertedMat(Bitmap bmp,String color)
     {
 
         List<Mat> list = new ArrayList<>();
@@ -106,6 +106,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         //Utils.bitmapToMat(inputImage, src);
         Utils.bitmapToMat(bmp, src2);
         Imgproc.cvtColor(src2, src2, Imgproc.COLOR_RGBA2BGR);
+        Imgproc.GaussianBlur(src2,src2,new Size(11,11),0);
 
         List<MatOfPoint> contours2 = new ArrayList<>();
 
@@ -113,9 +114,11 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         Mat threshold2_out;
 
-        threshold2_out = findColor(src2,15);
 
-        Imgproc.findContours(threshold2_out, contours2, hier2, Imgproc.RETR_LIST, Imgproc.CHAIN_APPROX_SIMPLE);
+        //Toast.makeText(getApplicationContext(),color,Toast.LENGTH_SHORT).show();
+        threshold2_out = (color.contains("YEL"))?findColor(src2,15):findRedColor(src2,15);
+
+        Imgproc.findContours(threshold2_out, contours2, hier2, Imgproc.RETR_CCOMP, Imgproc.CHAIN_APPROX_SIMPLE);
 
         int LargestContour2 = findBiggestContour(contours2);
 
@@ -133,12 +136,25 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         if(LargestContour2!= -1)
         {
             /*************Convex Hull 2***********/
+
             Imgproc.convexHull(contours2.get(LargestContour2), hull2, false);
             MatOfPoint hullContour2 = hull2Points(hull2, contours2.get(LargestContour2));
             convexHullContour2.add(hullContour2);
             Imgproc.drawContours(src2, convexHullContour2, 0, new Scalar(0, 0, 255), 3);
             Imgproc.drawContours(src2, contours2, LargestContour2, new Scalar(255), -1);
 
+            /*
+            for(int x = 0; x < contours2.size(); x++)
+            {
+
+                Imgproc.convexHull(contours2.get(x), hull2, false);
+                MatOfPoint hullContour2 = hull2Points(hull2, contours2.get(x));
+                convexHullContour2.add(hullContour2);
+                Imgproc.drawContours(src2, convexHullContour2, x, new Scalar(0, 0, 255), 3);
+                Imgproc.drawContours(src2, contours2, x, new Scalar(255), -1);
+
+            }
+            */
             /*
             Imgproc.drawContours(tempoutput,convexHullContour2,0, new Scalar(255,0,0),-1);
             Imgproc.drawContours(tempoutput, contours2, LargestContour2, new Scalar(255, 0, 0), -1);
@@ -148,6 +164,9 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             //list.add(tempoutput);
             list.add(hullContour2);
 
+        }else
+        {
+            list.add(src2);
         }
 
         return list;
@@ -176,7 +195,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         //txtMatching = (TextView) this.findViewById(R.id.TextViewMatching);
 
         cvxhullcontour = new MatOfPoint();
-        List<Mat> src = ConvertedMat(inputImage2);
+        List<Mat> src = ConvertedMat(inputImage2,"RED");
         cvxhullcontour = src.get(1);
         Contour1 = src.get(0);
         Utils.matToBitmap(Contour1, inputImage2);
@@ -207,15 +226,23 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         imgThreshold0 = new Mat(input.size(), CvType.CV_8UC1);
         imgThreshold1 = new Mat(input.size(), CvType.CV_8UC1);
 
+
+        //Imgproc.blur(input,input,input.size());
         Imgproc.cvtColor(input, imageHSV, Imgproc.COLOR_BGR2HSV);
 
-        //Core.inRange(imageHSV, new Scalar(0, minS, minV, 0), new Scalar(rng, maxS, maxV, 0), imgThreshold0);
 
+
+        //Core.inRange(imageHSV, new Scalar(0, minS, minV, 0), new Scalar(rng, maxS, maxV, 0), imgThreshold0);
+        //Yellow Color
+        Core.inRange(imageHSV, new Scalar(20, 100, 100), new Scalar(30, 255, 255), imgThreshold);
+        /*******************THRESHOLDING FOR RED*********************************/
+        /*
         Core.inRange(imageHSV, new Scalar(0, 190, 30), new Scalar(10,255,255), imgThreshold0);
         Core.inRange(imageHSV, new Scalar(170, 190, 30), new Scalar(180, 255, 255), imgThreshold1);
 
         Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
-
+        */
+        /*************************************************************************/
         //Core.inRange(imageHSV, new Scalar(170,70,50), new Scalar(180, 255, 255), imgThreshold1);
 
         //Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
@@ -233,6 +260,59 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         }
         */
 
+        Imgproc.erode(imgThreshold,imgThreshold,new Mat());
+        Imgproc.dilate(imgThreshold, imgThreshold, new Mat());
+        return imgThreshold;
+    }
+
+    public Mat findRedColor(Mat inputBGRimage, int rng)
+    {
+        int minS = 190;
+        int minV = 80;
+        int maxS = 255;
+        int maxV = 255;
+        Mat input;
+        input = inputBGRimage.clone();
+        Mat imageHSV = new Mat(input.size(), CvType.CV_8UC3);
+        Mat imgThreshold, imgThreshold0, imgThreshold1;
+
+        imgThreshold = new Mat(input.size(), CvType.CV_8UC1);
+        imgThreshold0 = new Mat(input.size(), CvType.CV_8UC1);
+        imgThreshold1 = new Mat(input.size(), CvType.CV_8UC1);
+
+
+        Imgproc.cvtColor(input, imageHSV, Imgproc.COLOR_BGR2HSV);
+
+
+        //Core.inRange(imageHSV, new Scalar(0, minS, minV, 0), new Scalar(rng, maxS, maxV, 0), imgThreshold0);
+
+        //Core.inRange(imageHSV, new Scalar(23,41,133), new Scalar(40,255,255), imgThreshold);
+        /*******************THRESHOLDING FOR RED*********************************/
+
+        Core.inRange(imageHSV, new Scalar(0, 190, 30), new Scalar(10,255,255), imgThreshold0);
+        Core.inRange(imageHSV, new Scalar(170, 190, 30), new Scalar(180, 255, 255), imgThreshold1);
+
+        Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
+
+        /*************************************************************************/
+        //Core.inRange(imageHSV, new Scalar(170,70,50), new Scalar(180, 255, 255), imgThreshold1);
+
+        //Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
+
+        //Imgproc.dilate(imgThreshold, imgThreshold, new Mat());
+
+        /*
+        if(rng > 0)
+        {
+            Core.inRange(imageHSV, new Scalar(180-rng,minS,maxV,0), new Scalar(180, maxS, maxV, 0), imgThreshold1);
+            Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
+        }
+        else {
+            imgThreshold = imgThreshold0;
+        }
+        */
+
+        Imgproc.erode(imgThreshold,imgThreshold,new Mat());
         Imgproc.dilate(imgThreshold, imgThreshold, new Mat());
         return imgThreshold;
     }
@@ -249,38 +329,49 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
         //return inputFrame.gray();
+        Mat src = inputFrame.rgba();
+        List<Mat> templist = new ArrayList<>();
+
+        Bitmap bmp = Bitmap.createBitmap(src.cols(), src.rows(),Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(src, bmp);
+        MatOfPoint cvxpoint = new MatOfPoint();
+        templist = ConvertedMat(bmp,"YEL");
+
+        Mat output1 = new Mat(src.size(), CvType.CV_8UC3);
+
+        src.convertTo(src,-1,2,50);//adjusting brightness
+        Imgproc.cvtColor(src,output1,Imgproc.COLOR_RGBA2BGR);
+        Imgproc.cvtColor(output1,output1,Imgproc.COLOR_BGR2HSV);
 
           try {
 
-              Mat src = inputFrame.rgba();
-              List<Mat> templist = new ArrayList<>();
-
-              Bitmap bmp = Bitmap.createBitmap(src.cols(), src.rows(),Bitmap.Config.ARGB_8888);
-              Utils.matToBitmap(src, bmp);
-              MatOfPoint cvxpoint = new MatOfPoint();
-              templist = ConvertedMat(bmp);
-
-
-              double x = Imgproc.matchShapes(templist.get(1), cvxhullcontour,Imgproc.CV_CONTOURS_MATCH_I1,0.0);
-              double m = 0.02;
-              double y = Double.compare(x,m);
-              Scalar diff_color = (x <= m)? new Scalar(0,255,0):new Scalar(255,0,0);
-              if(y <= 0)
+              if(templist.size() > 1)
               {
-                  runOnUiThread(new Runnable() {
-                      public void run() {
-                          Toast.makeText(getApplicationContext(), "MATCH!!", Toast.LENGTH_SHORT).show();
-                      }
-                  });
-              }
-              Imgproc.putText(templist.get(0),Double.toString(x),new Point(src.rows()/2, src.cols()/2),Core.FONT_ITALIC,1.0, diff_color);
 
-              return templist.get(0);
+                  double x = Imgproc.matchShapes(templist.get(1), cvxhullcontour,Imgproc.CV_CONTOURS_MATCH_I2,0.0);
+                  double m = 0.02;
+                  double y = Double.compare(x,m);
+                  Scalar diff_color = (x <= m)? new Scalar(0,255,0):new Scalar(255,0,0);
+                  if(y <= 0)
+                  {
+                      runOnUiThread(new Runnable() {
+                          public void run() {
+                              Toast.makeText(getApplicationContext(), "MATCH!!", Toast.LENGTH_SHORT).show();
+                          }
+                      });
+                  }
+                  Imgproc.putText(templist.get(0),Double.toString(x),new Point(src.rows()/2, src.cols()/2),Core.FONT_ITALIC,1.0, diff_color);
+
+              }
+              output1 = templist.get(0);
+              //return templist.get(0);
+
+
           }catch(Exception e)
           {
               Log.e("La Exception on tobul:",e.toString());
           }
-        return inputFrame.rgba();
+        return output1;
     }
 
 

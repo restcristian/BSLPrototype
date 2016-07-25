@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">OpenCVMobileApp</string>
+    <string name = "menu_1">Numbers</string>
+    <string name = "menu_2">Alphabet</string>
+
 </resources>
