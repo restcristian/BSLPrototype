@@ -65,9 +65,12 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         System.loadLibrary("nonfree");
 
     }
+    private Bundle imgResources;
     private ImageView imageView;
     private ImageView imageView2;
     private TextView txtMatching;
+    private int resourcesArray[];
+    private int resourceIndex;
 
     private Bitmap inputImage; // make bitmap from image resource
     private Bitmap inputImage2;
@@ -114,8 +117,6 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         Mat threshold2_out;
 
-
-        //Toast.makeText(getApplicationContext(),color,Toast.LENGTH_SHORT).show();
         threshold2_out = (color.contains("YEL"))?findColor(src2,15):findRedColor(src2,15);
 
         Imgproc.findContours(threshold2_out, contours2, hier2, Imgproc.RETR_CCOMP, Imgproc.CHAIN_APPROX_SIMPLE);
@@ -144,7 +145,13 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             Imgproc.drawContours(src2, contours2, LargestContour2, new Scalar(255), -1);
 
             //Get convexhull into grayscale
+
             tempoutput = convexHullContour2.get(0);
+            //tempoutput.convertTo(tempoutput, CvType.CV_8UC1);
+            //Imgproc.cvtColor(tempoutput,tempoutput,Imgproc.COLOR_BGR2GRAY);
+
+
+            /*
 
             MatOfInt4 defects = new MatOfInt4();
             int defect_count = 0;
@@ -163,6 +170,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
 
             }
+            */
             /*
             for(int x = 0; x < contours2.size(); x++)
             {
@@ -196,13 +204,25 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         //inputImage = BitmapFactory.decodeResource(getResources(), R.drawable.1);
-        inputImage2 = BitmapFactory.decodeResource(getResources(),R.drawable.count5);
+
+        resourceIndex = 0;
+        imgResources = getIntent().getExtras();
+        if(imgResources!=null)
+        {
+           resourcesArray = imgResources.getIntArray("ResourcesArray");
+            inputImage2 = BitmapFactory.decodeResource(getResources(),resourcesArray[resourceIndex]);
+        }
+
+        //inputImage2 = BitmapFactory.decodeResource(getResources(),R.drawable.count5);
+
+
 
         setContentView(R.layout.activity_main);
         if(!OpenCVLoader.initDebug())
         {
 
         }
+
         mCameraManager = (CameraBridgeViewBase)findViewById(R.id.myCameraView1);
         mCameraManager.setVisibility(SurfaceView.VISIBLE);
         mCameraManager.setCvCameraViewListener(this);
@@ -215,23 +235,29 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         imageView2 = (ImageView) this.findViewById(R.id.imageView2);
         //txtMatching = (TextView) this.findViewById(R.id.TextViewMatching);
 
+        nextTemplateConvert();
+        /*
         cvxhullcontour = new MatOfPoint();
         List<Mat> src = ConvertedMat(inputImage2,"RED");
         cvxhullcontour = src.get(1);
         Contour1 = src.get(0);
         Utils.matToBitmap(Contour1, inputImage2);
         imageView2.setImageBitmap(inputImage2);
+         */
 
-
-        //sift();
-        //convex_hull();
-        //test();
-        //test2();
-       // hand_cascade();
-       // tryout();
 
     }
 
+    public void nextTemplateConvert()
+    {
+        cvxhullcontour = new MatOfPoint();
+        List<Mat> src = ConvertedMat(inputImage2,"RED");
+        cvxhullcontour = src.get(1);
+        Contour1 = src.get(0);
+        Utils.matToBitmap(Contour1, inputImage2);
+
+        imageView2.setImageBitmap(inputImage2);
+    }
     public Mat findColor(Mat inputBGRimage, int rng)
     {
         int minS = 190;
@@ -367,7 +393,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
           try {
 
               if(templist.size() > 1)
-              {
+                  {
+                      System.out.println("Channels-A:"+cvxhullcontour.channels());
+                      System.out.println("Channels-B:"+templist.get(1).channels());
+
                   double x = Imgproc.matchShapes(cvxhullcontour, templist.get(1),Imgproc.CV_CONTOURS_MATCH_I1,0);
                   double m = 0.05;
                   double y = Double.compare(x,m);
@@ -376,6 +405,9 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
                   {
                       runOnUiThread(new Runnable() {
                           public void run() {
+                              resourceIndex = (resourceIndex < (resourcesArray.length - 1))?(resourceIndex+1):(resourcesArray.length -1);
+                              inputImage2 = BitmapFactory.decodeResource(getResources(),resourcesArray[resourceIndex]);
+                              nextTemplateConvert();
                               Toast.makeText(getApplicationContext(), "MATCH!!", Toast.LENGTH_SHORT).show();
                           }
                       });
