@@ -106,7 +106,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         //Utils.bitmapToMat(inputImage, src);
         Utils.bitmapToMat(bmp, src2);
         Imgproc.cvtColor(src2, src2, Imgproc.COLOR_RGBA2BGR);
-        Imgproc.GaussianBlur(src2,src2,new Size(11,11),0);
+        Imgproc.GaussianBlur(src2, src2, new Size(35, 35), 0);
 
         List<MatOfPoint> contours2 = new ArrayList<>();
 
@@ -127,7 +127,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         //Mat output2 = new Mat(src2.size(), CvType.CV_8UC3);
 
-        Mat tempoutput = new Mat(src2.size(), CvType.CV_32F);
+        Mat tempoutput = new Mat(src2.size(), CvType.CV_8UC1);
 
         List<MatOfPoint> convexHullContour2 = new ArrayList<>();
 
@@ -143,6 +143,26 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             Imgproc.drawContours(src2, convexHullContour2, 0, new Scalar(0, 0, 255), 3);
             Imgproc.drawContours(src2, contours2, LargestContour2, new Scalar(255), -1);
 
+            //Get convexhull into grayscale
+            tempoutput = convexHullContour2.get(0);
+
+            MatOfInt4 defects = new MatOfInt4();
+            int defect_count = 0;
+            Imgproc.convexityDefects(contours2.get(LargestContour2),hull2,defects);
+            List<Integer> cdList = defects.toList();
+            Point data[] = contours2.get(LargestContour2).toArray();
+            for(int x = 0; x < defects.toList().size(); x+=4)
+            {
+                Point start = data[cdList.get(x)];
+                Point end = data[cdList.get(x+1)];
+                Point defect = data[cdList.get(x+2)];
+
+                //Imgproc.circle(src2,start,5, new Scalar(0,255,0),2);
+                //Imgproc.circle(src2,end,5, new Scalar(0,255,0),2);
+                Imgproc.circle(src2,defect, 5, new Scalar(0,255,0),2);
+
+
+            }
             /*
             for(int x = 0; x < contours2.size(); x++)
             {
@@ -161,8 +181,9 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
              */
             list.add(src2);
-            //list.add(tempoutput);
-            list.add(hullContour2);
+            list.add(tempoutput);
+            //list.add(convexHullContour2.get(0));
+
 
         }else
         {
@@ -347,11 +368,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
               if(templist.size() > 1)
               {
-
-                  double x = Imgproc.matchShapes(templist.get(1), cvxhullcontour,Imgproc.CV_CONTOURS_MATCH_I2,0.0);
-                  double m = 0.02;
+                  double x = Imgproc.matchShapes(cvxhullcontour, templist.get(1),Imgproc.CV_CONTOURS_MATCH_I1,0);
+                  double m = 0.05;
                   double y = Double.compare(x,m);
-                  Scalar diff_color = (x <= m)? new Scalar(0,255,0):new Scalar(255,0,0);
+                  Scalar diff_color = (x <= m)? new Scalar(0,255,0):new Scalar(255,0,255);
                   if(y <= 0)
                   {
                       runOnUiThread(new Runnable() {
@@ -383,94 +403,6 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
 
 
-    public void hand_cascade()
-    {
-
-        try
-        {
-
-            InputStream is = getResources().openRawResource(R.raw.hand);
-            File cascadeDir = getDir("cascade", Context.MODE_PRIVATE);
-            File cascadeFile = new File(cascadeDir,"hand.xml");
-            FileOutputStream os = new FileOutputStream(cascadeFile);
-
-            byte[] buffer = new byte[4096];
-            int bytesRead;
-            while((bytesRead = is.read(buffer))!= -1)
-            {
-                os.write(buffer,0,bytesRead);
-            }
-            is.close();
-            os.close();
-
-            Log.d("El file:", cascadeFile.getAbsolutePath());
-            CascadeClassifier hand_classifier = new CascadeClassifier(cascadeFile.getAbsolutePath());
-            hand_classifier.load(cascadeFile.getAbsolutePath());
-
-            Mat gray = new Mat();
-            Mat src = new Mat();
-            Utils.bitmapToMat(inputImage, src);
-            Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2BGR);
-            Imgproc.cvtColor(gray,gray, Imgproc.COLOR_BGR2GRAY);
-
-            MatOfRect matOfRect = new MatOfRect();
-
-            hand_classifier.detectMultiScale(src,matOfRect);
-
-            List<org.opencv.core.Rect> rectList = new ArrayList<>();
-            rectList = matOfRect.toList();
-
-            for(org.opencv.core.Rect rect : rectList)
-            {
-                Log.d("Hand1:", Double.toString(rect.area()));
-                Imgproc.rectangle(src, new Point(rect.x, rect.y), new Point(rect.x + rect.width, rect.y + rect.height), new Scalar(255, 255, 0),2);
-
-                 Log.d("Handx:",Double.toString(rect.x));
-                Log.d("Handy:",Double.toString(rect.y));
-            }
-            Log.d("Total Hands:",Integer.toString(rectList.size()));
-
-
-            Utils.matToBitmap(src,inputImage);
-            imageView.setImageBitmap(inputImage);
-
-
-        }catch(Exception e)
-        {
-            Log.e("Esta es la puta:",e.toString());
-        }
-
-    }
-
-    public void test2()
-    {
-        Mat src = new Mat();
-        Mat src2 = new Mat();
-        //Converting the Bitmaps to Mat objects
-        Utils.bitmapToMat(inputImage, src);
-        Utils.bitmapToMat((inputImage2.copy(Bitmap.Config.ARGB_8888, false)), src2);
-
-        Mat hsv = new Mat();
-        Imgproc.blur(src, src, new Size(3, 3));
-        Imgproc.cvtColor(src, hsv, Imgproc.COLOR_BGR2HSV);
-
-        Mat bw = new Mat();
-        Core.inRange(hsv,new Scalar(0,10,60),new Scalar(20,150,255),bw);
-
-        List<MatOfPoint> contours = new ArrayList<>();
-        Mat hier = new Mat();
-
-        Imgproc.findContours(bw,contours,hier,Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE,new Point(0,0));
-        int s = findBiggestContour(contours);
-
-        Mat drawing = new Mat(src.size(),CvType.CV_8UC1);
-        Imgproc.drawContours(drawing,contours,s,new Scalar(255),-1);
-
-        Utils.matToBitmap(drawing, inputImage);
-        imageView.setImageBitmap(inputImage);
-
-    }
-
     public int findBiggestContour(List<MatOfPoint> contours)
     {
         int indexOfBiggest = -1;
@@ -498,8 +430,6 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
        point.fromList(points);
        return point;
    }
-
-
 
 
 }
