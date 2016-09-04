@@ -21,6 +21,12 @@ public class MainMenu extends AppCompatActivity {
             R.drawable.count8,
             R.drawable.count9
     };
+    private int[] alphabetResources = {
+            R.drawable.a,
+            R.drawable.b,
+            R.drawable.c,
+            R.drawable.d,
+    };
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,14 +41,13 @@ public class MainMenu extends AppCompatActivity {
                 optionClick(v,numberResources);
             }
         });
-
-        /*
         optionBtn2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 optionClick(v,alphabetResources);
             }
-        });*/
+        });
+
     }
     private void optionClick(View v, int[] resources)
     {
