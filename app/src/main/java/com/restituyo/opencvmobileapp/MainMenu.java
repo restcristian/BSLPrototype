@@ -1,3 +1,8 @@
+/*****************************
+ * File Name: MainMenu.java
+ * Created by: Cristian Restituyo
+ * Activity file in charge of holding the Activity class for the scenario list
+ */
 package com.restituyo.opencvmobileapp;
 
 import android.content.Intent;
@@ -6,10 +11,13 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 
+
 public class MainMenu extends AppCompatActivity {
 
     private Button optionBtn1;
     private Button optionBtn2;
+
+    //Array containing Number Resources
     private int[] numberResources = {
             R.drawable.count1,
             R.drawable.count2,
@@ -21,6 +29,7 @@ public class MainMenu extends AppCompatActivity {
             R.drawable.count8,
             R.drawable.count9
     };
+    //Array containing Alphabet Resources
     private int[] alphabetResources = {
             R.drawable.a,
             R.drawable.b,
@@ -49,6 +58,10 @@ public class MainMenu extends AppCompatActivity {
         });
 
     }
+    /*Method:optionClick
+      parameters: the view object passed, array of resources.
+      initiates the main activity passing the received resources into a bundle.
+     */
     private void optionClick(View v, int[] resources)
     {
         Bundle bundle = new Bundle();

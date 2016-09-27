@@ -1,64 +1,46 @@
+ /************************************
+ * Filename: MainActivity.java
+ * Created by: Cristian Restituyo
+ * File containing the class for the Main Activity.
+ * Core of the application. Receives set of gestures.
+ */
 package com.restituyo.opencvmobileapp;
 
 import android.app.Activity;
-import android.content.Context;
-import android.content.pm.ActivityInfo;
-import android.graphics.Rect;
-import android.support.v4.media.MediaBrowserCompat;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
+
 import android.util.Log;
 import android.view.SurfaceView;
-import android.view.View;
+
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
-import org.opencv.android.JavaCameraView;
+
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
-import org.opencv.core.DMatch;
+
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfByte;
-import org.opencv.core.MatOfDMatch;
+
 import org.opencv.core.MatOfInt;
-import org.opencv.core.MatOfInt4;
-import org.opencv.core.MatOfKeyPoint;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfRect;
 import org.opencv.core.Point;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
-import org.opencv.features2d.DescriptorExtractor;
-import org.opencv.features2d.DescriptorMatcher;
-import org.opencv.features2d.FeatureDetector;
-import org.opencv.features2d.Features2d;
+
 import org.opencv.imgproc.Imgproc;
-import org.opencv.objdetect.CascadeClassifier;
-import org.opencv.videoio.VideoCapture;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.regex.Matcher;
 
-import dalvik.system.BaseDexClassLoader;
-
+ //Main class implements CameraViewListener to use the CameraView
 public class MainActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
     static {
         System.loadLibrary("opencv_java");
@@ -72,13 +54,11 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     private int resourcesArray[];
     private int resourceIndex;
 
+
     private Bitmap inputImage; // make bitmap from image resource
     private Bitmap inputImage2;
     private Mat cvxhullcontour;
     private Mat Contour1;
-    //private FeatureDetector detector = FeatureDetector.create(FeatureDetector.SIFT);
-    private FeatureDetector detector = FeatureDetector.create(FeatureDetector.SIFT);
-   // private static long MIN_HESSIAN = 400;
 
     private CameraBridgeViewBase mCameraManager;
     private BaseLoaderCallback mBaseLoaderCallback = new BaseLoaderCallback(this) {
@@ -98,7 +78,8 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         }
     };
 
-
+    //Function that returns the convexhull of both the CameraView current frame and the current gesture
+     //along with their corresponding contours
     public List<Mat> ConvertedMat(Bitmap bmp,String color)
     {
 
@@ -118,19 +99,23 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         Mat threshold2_out;
 
-        Mat ROI = src2.clone();
+        //Mat ROI = src2.clone();
 
         Mat ROI2 = new Mat();
 
-        if(color.contains("YEL"))
+        Imgproc.putText(src2, Integer.toString(resourceIndex+1) + "/" + Integer.toString(resourcesArray.length), new Point(0, 40), Core.FONT_ITALIC, 1.0, new Scalar(0, 255, 0));
+
+
+        if(color.contains("SKIN"))
         {
+
             Imgproc.rectangle(src2, new Point(bmp.getWidth() / 4, bmp.getHeight() / 4), new Point(bmp.getWidth() / 2 + 150, bmp.getHeight() / 2 + 100), new Scalar(0, 255, 0));
             org.opencv.core.Rect rect1 = new org.opencv.core.Rect(new Point(bmp.getWidth() / 4, bmp.getHeight() / 4), new Point(bmp.getWidth() / 2 + 150, bmp.getHeight() / 2 + 100));
             ROI2 = new Mat(src2,rect1);
-            ROI = ROI.submat(rect1);
+            //ROI = ROI.submat(rect1);
 
-            //threshold2_out = findColor(src2,15,bmp);
-            threshold2_out = findColor(ROI2,15,bmp);
+            //threshold2_out = findSkin(src2,15,bmp);
+            threshold2_out = findSkin(ROI2, 15, bmp);
 
 
             //ROI = ROI.submat(new org.opencv.core.Rect(new Point(bmp.getWidth() / 4, bmp.getHeight() / 4), new Point(bmp.getWidth() / 2 + 150, bmp.getHeight() / 2 + 100)));
@@ -142,7 +127,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
        // Imgproc.rectangle(src2, new Point(bmp.getWidth() / 4, bmp.getHeight() / 4), new Point(bmp.getWidth() / 2 + 150, bmp.getHeight() / 2 + 100), new Scalar(0, 255, 0));
         //ROI = ROI.submat(new org.opencv.core.Rect(new Point(bmp.getWidth() / 4, bmp.getHeight() / 4), new Point(bmp.getWidth() / 2 + 150, bmp.getHeight() / 2 + 100)));
 
-        //threshold2_out = (color.contains("YEL"))?findColor(src2,15,bmp):findRedColor(src2,15);
+        //threshold2_out = (color.contains("YEL"))?findSkin(src2,15,bmp):findRedColor(src2,15);
 
         Imgproc.findContours(threshold2_out, contours2, hier2, Imgproc.RETR_CCOMP, Imgproc.CHAIN_APPROX_SIMPLE);
 
@@ -167,13 +152,14 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             MatOfPoint hullContour2 = hull2Points(hull2, contours2.get(LargestContour2));
             convexHullContour2.add(hullContour2);
 
-            if(color.contains("YEL"))
+            if(color.contains("SKIN"))
             {
                 Imgproc.drawContours(ROI2, convexHullContour2, 0, new Scalar(0, 0, 255), 3);
                 Imgproc.drawContours(ROI2, contours2, LargestContour2, new Scalar(255), -1);
 
             }
-            else {
+            else
+            {
                 Imgproc.drawContours(src2, convexHullContour2, 0, new Scalar(0, 0, 255), 3);
                 Imgproc.drawContours(src2, contours2, LargestContour2, new Scalar(255), -1);
 
@@ -182,51 +168,10 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
 
 
-            //Get convexhull into grayscale
+            //Get convexhull into output
 
             tempoutput = convexHullContour2.get(0);
-            //Imgproc.cvtColor(convexHullContour2.get(0),tempoutput,Imgproc.COLOR_HSV2BGR);
-            //tempoutput.convertTo(tempoutput, CvType.CV_8UC1);
-            //Imgproc.cvtColor(tempoutput,tempoutput,Imgproc.COLOR_BGR2GRAY);
 
-
-            /*
-
-            MatOfInt4 defects = new MatOfInt4();
-            int defect_count = 0;
-            Imgproc.convexityDefects(contours2.get(LargestContour2),hull2,defects);
-            List<Integer> cdList = defects.toList();
-            Point data[] = contours2.get(LargestContour2).toArray();
-            for(int x = 0; x < defects.toList().size(); x+=4)
-            {
-                Point start = data[cdList.get(x)];
-                Point end = data[cdList.get(x+1)];
-                Point defect = data[cdList.get(x+2)];
-
-                //Imgproc.circle(src2,start,5, new Scalar(0,255,0),2);
-                //Imgproc.circle(src2,end,5, new Scalar(0,255,0),2);
-                Imgproc.circle(src2,defect, 5, new Scalar(0,255,0),2);
-
-
-            }
-            */
-            /*
-            for(int x = 0; x < contours2.size(); x++)
-            {
-
-                Imgproc.convexHull(contours2.get(x), hull2, false);
-                MatOfPoint hullContour2 = hull2Points(hull2, contours2.get(x));
-                convexHullContour2.add(hullContour2);
-                Imgproc.drawContours(src2, convexHullContour2, x, new Scalar(0, 0, 255), 3);
-                Imgproc.drawContours(src2, contours2, x, new Scalar(255), -1);
-
-            }
-            */
-            /*
-            Imgproc.drawContours(tempoutput,convexHullContour2,0, new Scalar(255,0,0),-1);
-            Imgproc.drawContours(tempoutput, contours2, LargestContour2, new Scalar(255, 0, 0), -1);
-
-             */
 
 
             list.add(src2);
@@ -241,10 +186,11 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         return list;
     }
+     //Function that executes when the activity is created.
+     //Obtains the list of gestures passed through an intent
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        //inputImage = BitmapFactory.decodeResource(getResources(), R.drawable.1);
 
         resourceIndex = 0;
         imgResources = getIntent().getExtras();
@@ -254,15 +200,9 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
             inputImage2 = BitmapFactory.decodeResource(getResources(),resourcesArray[resourceIndex]);
         }
 
-        //inputImage2 = BitmapFactory.decodeResource(getResources(),R.drawable.count5);
-
-
 
         setContentView(R.layout.activity_main);
-        if(!OpenCVLoader.initDebug())
-        {
-
-        }
+        if(!OpenCVLoader.initDebug()) {}
 
         mCameraManager = (CameraBridgeViewBase)findViewById(R.id.myCameraView1);
         mCameraManager.setVisibility(SurfaceView.VISIBLE);
@@ -271,20 +211,9 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
 
 
-        //setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
-       // imageView = (ImageView) this.findViewById(R.id.imageView);
         imageView2 = (ImageView) this.findViewById(R.id.imageView2);
-        //txtMatching = (TextView) this.findViewById(R.id.TextViewMatching);
 
         nextTemplateConvert();
-        /*
-        cvxhullcontour = new MatOfPoint();
-        List<Mat> src = ConvertedMat(inputImage2,"RED");
-        cvxhullcontour = src.get(1);
-        Contour1 = src.get(0);
-        Utils.matToBitmap(Contour1, inputImage2);
-        imageView2.setImageBitmap(inputImage2);
-         */
 
 
     }
@@ -299,7 +228,8 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         imageView2.setImageBitmap(inputImage2);
     }
-    public Mat findColor(Mat inputBGRimage, int rng, Bitmap bmp)
+     //function to perform skin segmentation using YCRCB colour space
+    public Mat findSkin(Mat inputBGRimage, int rng, Bitmap bmp)
     {
         int minS = 190;
         int minV = 80;
@@ -308,61 +238,28 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         Mat input;
         input = inputBGRimage.clone();
         Mat imageHSV = new Mat(input.size(), CvType.CV_8UC3);
-        Mat imgThreshold, imgThreshold0, imgThreshold1;
+        Mat imgThreshold;
 
         imgThreshold = new Mat(input.size(), CvType.CV_8UC1);
-        imgThreshold0 = new Mat(input.size(), CvType.CV_8UC1);
-        imgThreshold1 = new Mat(input.size(), CvType.CV_8UC1);
 
 
         //Imgproc.blur(input,input,input.size());
         //Imgproc.cvtColor(input, imageHSV, Imgproc.COLOR_BGR2HSV);
-        Imgproc.cvtColor(input,imageHSV, Imgproc.COLOR_BGR2YCrCb);
+        Imgproc.cvtColor(input, imageHSV, Imgproc.COLOR_BGR2YCrCb);
 
         //General Skin Color//*Run this piece of Code ASAP!!!
-        Core.inRange(imageHSV,new Scalar(0,133,77), new Scalar(255,173,127),imgThreshold);
-        //Core.inRange(imageHSV, new Scalar(0, minS, minV, 0), new Scalar(rng, maxS, maxV, 0), imgThreshold0);
-        //Yellow Color
-        //Core.inRange(imageHSV, new Scalar(20, 100, 100), new Scalar(30, 255, 255), imgThreshold);
-        /*******************THRESHOLDING FOR RED*********************************/
-        /*
-        Core.inRange(imageHSV, new Scalar(0, 190, 30), new Scalar(10,255,255), imgThreshold0);
-        Core.inRange(imageHSV, new Scalar(170, 190, 30), new Scalar(180, 255, 255), imgThreshold1);
-
-        Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
-        */
-        /*************************************************************************/
-        //Core.inRange(imageHSV, new Scalar(170,70,50), new Scalar(180, 255, 255), imgThreshold1);
-
-        //Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
-
-        //Imgproc.dilate(imgThreshold, imgThreshold, new Mat());
-
-        /*
-        if(rng > 0)
-        {
-            Core.inRange(imageHSV, new Scalar(180-rng,minS,maxV,0), new Scalar(180, maxS, maxV, 0), imgThreshold1);
-            Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
-        }
-        else {
-            imgThreshold = imgThreshold0;
-        }
-        */
-
-        //Imgproc.rectangle(src2, new Point(bmp.getWidth()/4, bmp.getHeight()/4), new Point(bmp.getWidth()/2 + 150, bmp.getHeight()/2 + 100), new Scalar(0, 255, 0));
-
+        Core.inRange(imageHSV, new Scalar(0, 133, 77), new Scalar(255, 173, 127), imgThreshold);
 
 
         Imgproc.erode(imgThreshold, imgThreshold, new Mat());
         Imgproc.dilate(imgThreshold, imgThreshold, new Mat());
 
 
-
         //ROI = src2.submat(new org.opencv.core.Rect(new Point(bmp.getWidth()/4, bmp.getHeight()/4), new Point(bmp.getWidth()/2 + 150, bmp.getHeight()/2 + 100)));
 
         return imgThreshold;
     }
-
+     //Function to perform colour thresholding based on red value and HSV color space
     public Mat findRedColor(Mat inputBGRimage, int rng)
     {
         int minS = 190;
@@ -382,11 +279,6 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         Imgproc.cvtColor(input, imageHSV, Imgproc.COLOR_BGR2HSV);
 
-
-
-        //Core.inRange(imageHSV, new Scalar(0, minS, minV, 0), new Scalar(rng, maxS, maxV, 0), imgThreshold0);
-
-        //Core.inRange(imageHSV, new Scalar(23,41,133), new Scalar(40,255,255), imgThreshold);
         /*******************THRESHOLDING FOR RED*********************************/
 
         Core.inRange(imageHSV, new Scalar(0, 190, 30), new Scalar(10,255,255), imgThreshold0);
@@ -394,23 +286,6 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
 
-        /*************************************************************************/
-        //Core.inRange(imageHSV, new Scalar(170,70,50), new Scalar(180, 255, 255), imgThreshold1);
-
-        //Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
-
-        //Imgproc.dilate(imgThreshold, imgThreshold, new Mat());
-
-        /*
-        if(rng > 0)
-        {
-            Core.inRange(imageHSV, new Scalar(180-rng,minS,maxV,0), new Scalar(180, maxS, maxV, 0), imgThreshold1);
-            Core.bitwise_or(imgThreshold0, imgThreshold1, imgThreshold);
-        }
-        else {
-            imgThreshold = imgThreshold0;
-        }
-        */
 
         Imgproc.erode(imgThreshold,imgThreshold,new Mat());
         Imgproc.dilate(imgThreshold, imgThreshold, new Mat());
@@ -426,17 +301,19 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
     }
 
+     //Function that runs for every frame passed in the CameraView
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-        
-        //return inputFrame.gray();
+
         Mat src = inputFrame.rgba();
         List<Mat> templist = new ArrayList<>();
 
+        Core.flip(src.t(),src,1);//Flipping Frame
         Bitmap bmp = Bitmap.createBitmap(src.cols(), src.rows(),Bitmap.Config.ARGB_8888);
+
         Utils.matToBitmap(src, bmp);
         MatOfPoint cvxpoint = new MatOfPoint();
-        templist = ConvertedMat(bmp,"YEL");
+        templist = ConvertedMat(bmp,"SKIN");
 
         Mat output1 = new Mat(src.size(), CvType.CV_8UC3);
 
@@ -480,7 +357,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
         return output1;
     }
 
-
+    //Runs When Application resumes.
     @Override
     public void onResume() {
         super.onResume();
@@ -488,14 +365,14 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
     }
 
 
-
+    //Function to return the contour with the biggest area within a list
     public int findBiggestContour(List<MatOfPoint> contours)
     {
         int indexOfBiggest = -1;
         double sizeOfBiggest = 0;
         for(int x = 0; x < contours.size(); x++)
         {
-            if(contours.get(x).size().area() > sizeOfBiggest)
+            if(contours.get(x).size().area() > sizeOfBiggest) //EYE
             {
                 sizeOfBiggest = contours.get(x).size().area();
                 indexOfBiggest = x;
@@ -504,6 +381,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         return indexOfBiggest;
     }
+   //Function to convert a MatOfInt into MatOfPoint to be drawn.
    public MatOfPoint hull2Points(MatOfInt hull, MatOfPoint contour)
    {
        List<Integer> indxs = hull.toList();
